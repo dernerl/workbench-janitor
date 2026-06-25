@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. Optional, falls du den Janitor unbeaufsichtigt per launchd laufen lassen willst.
+  HINWEIS: Geschützte Ordner (~/Desktop, ~/Documents, ~/Downloads) brauchen dafür
+  Full Disk Access (Systemeinstellungen → Datenschutz). Aus einer Terminal-/Editor-Session
+  heraus (z.B. per Cron-Alternative in der Shell) ist das nicht nötig.
+
+  Ersetze __JANITOR_DIR__ durch den absoluten Pfad zu diesem Ordner und installiere:
+    sed "s|__JANITOR_DIR__|$PWD|g" launchd.plist.template > ~/Library/LaunchAgents/workbench-janitor.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/workbench-janitor.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>workbench-janitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>__JANITOR_DIR__/janitor.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>9</integer>
+        <key>Minute</key><integer>7</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>__JANITOR_DIR__/reports/launchd.out</string>
+    <key>StandardErrorPath</key>
+    <string>__JANITOR_DIR__/reports/launchd.err</string>
+</dict>
+</plist>

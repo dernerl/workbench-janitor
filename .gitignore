@@ -1,0 +1,21 @@
+# Lauf-Artefakte & lokales Projekt-Inventar — bleiben privat
+reports/
+state.json
+.icon_state.json
+
+# user-spezifische Config (Vorlage: symbols.example.json)
+symbols.json
+
+# echte launchd-plist (Vorlage: launchd.plist.template)
+*.plist
+
+# eigene Planungs-/Arbeitsnotizen
+tasks/
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+Icon?
+.DS_Store

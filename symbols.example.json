@@ -1,0 +1,12 @@
+{
+  "_comment": "Kopiere nach symbols.json und passe an. owner_aliases: GitHub-Login→Kurzname (Substring-Match). by_owner: Kurzname→SF-Symbol fürs Ordner-Icon. Die Icon-FARBE kommt automatisch aus dem GitHub-Status (rot=nur lokal, orange=public, grün=private). SF-Symbolnamen siehe Apple 'SF Symbols' App.",
+  "owner_aliases": {
+    "my-github-org": "work",
+    "my-personal-login": "me"
+  },
+  "by_owner": {
+    "me": "house.fill",
+    "work": "building.2.fill"
+  },
+  "default": "folder.fill"
+}
