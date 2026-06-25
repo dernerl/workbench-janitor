@@ -7,7 +7,7 @@ some half-finished), `workbench-janitor` turns that pile into something readable
 each folder's real Git/GitHub status onto its **Finder folder icon and tag**, and reports
 what you can safely clean up. macOS-only. Recommend-only — it never deletes anything.
 
-![concept](docs/concept.png)
+<img width="284" height="262" alt="image" src="https://github.com/user-attachments/assets/81065f10-a721-40e6-9d8d-eaf9374be344" />
 
 ## The Finder mapping
 
@@ -97,7 +97,3 @@ See `docs/adr/` for the design decisions.
 macOS-only. `NSWorkspace.setIcon` + Finder icon caching can be finicky; a manual
 `killall Finder` forces a full refresh. The cleanup suggestions are based on local state
 (no automatic `git fetch`).
-
-## License
-
-MIT
