@@ -39,12 +39,7 @@ TAG_PREFIX = "gh "  # nur diese Tags verwaltet der Janitor; andere (z.B. "Design
 COLOR = {"none": 0, "gray": 1, "green": 2, "purple": 3,
          "blue": 4, "yellow": 5, "red": 6, "orange": 7}
 
-# Farbindex → RGB fürs Icon-Tinten (Apple System Colors)
-ICON_RGB = {2: (52, 199, 89), 6: (255, 59, 48), 7: (255, 149, 0), 1: (142, 142, 147)}
-
-SWIFT_ICON = SELF_DIR / "lib" / "set_folder_icon.swift"
 SYMBOLS_FILE = SELF_DIR / "symbols.json"
-ICON_STATE = SELF_DIR / ".icon_state.json"  # zuletzt gesetzt: name → "symbol|colorindex"
 
 
 def tag_color_index(expected_tag: str) -> int:
@@ -58,7 +53,7 @@ def tag_color_index(expected_tag: str) -> int:
     return COLOR["none"]
 
 
-# owner-Aliase (GitHub-Login → Kurzname im Tag-/Icon-Schema), aus symbols.json befüllt
+# owner-Aliase (GitHub-Login → Kurzname im Tag-Schema), aus symbols.json befüllt
 OWNER_ALIASES: dict[str, str] = {}
 
 
@@ -91,8 +86,6 @@ class Project:
     current_tags: list[str] = field(default_factory=list)
     expected_tag: str | None = None
     tag_changed: bool = False
-    icon_symbol: str | None = None
-    icon_changed: bool = False
     note: str = ""
 
 
@@ -110,8 +103,7 @@ def newest_age_days(d: Path) -> int:
     for root, dirs, files in os.walk(d):
         dirs[:] = [x for x in dirs if x not in SKIP_WALK]
         for f in files:
-            # eigene Artefakte ignorieren, sonst „frisch angefasst" durch Icon-Schreiben
-            if f == ".DS_Store" or f.startswith("Icon\r") or f.startswith("._"):
+            if f == ".DS_Store" or f.startswith("._"):
                 continue
             try:
                 m = os.path.getmtime(os.path.join(root, f))
@@ -186,9 +178,7 @@ def collect(d: Path) -> Project:
             p.remote = remote
             p.host, p.owner, p.repo = parse_owner_repo(remote)
         rc, st = run(["git", "status", "--porcelain"], cwd=d)
-        # das Custom-Icon ("Icon\r") nie als echte Änderung werten
-        lines = [l for l in st.splitlines() if "Icon\\r" not in l]
-        p.dirty = bool(lines)
+        p.dirty = bool(st.splitlines())
         rc, ahead = run(["git", "rev-list", "--count", "@{u}..HEAD"], cwd=d)
         p.unpushed = int(ahead) if rc == 0 and ahead.isdigit() else 0
 
@@ -308,53 +298,7 @@ def load_symbols() -> dict:
     try:
         return json.loads(SYMBOLS_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return {"default": "folder.fill", "map": {}}
-
-
-def ensure_git_ignores_icon(d: Path) -> None:
-    """`Icon\\r` lokal in .git/info/exclude eintragen, damit das Icon den Repo nicht verschmutzt."""
-    exclude = d / ".git" / "info" / "exclude"
-    if not exclude.parent.is_dir():
-        return
-    try:
-        body = exclude.read_text(encoding="utf-8") if exclude.exists() else ""
-        # 'Icon?' statt 'Icon\r': git trimmt trailing CR, das '?' matcht das CR der Icon-Datei
-        if "Icon?" not in body:
-            with exclude.open("a", encoding="utf-8") as f:
-                f.write("\n# macOS custom folder icon (Workbench Janitor)\nIcon?\n")
-    except OSError:
-        pass
-
-
-def reconcile_icon(p: Project, d: Path, symbols: dict, icon_state: dict, apply: bool) -> None:
-    """Setzt das Ordner-Icon (Symbol=Zweck, Farbe=gh-Status). Nur bei Änderung."""
-    idx = tag_color_index(p.expected_tag) if p.expected_tag else COLOR["gray"]
-    if idx not in ICON_RGB:
-        return  # keine sinnvolle Farbe (z.B. remote-gone) → Icon unangetastet lassen
-    # Icon = owner (per symbols.json by_owner); sonst neutrales Default-Icon
-    by_owner = symbols.get("by_owner", {})
-    short = owner_short(p.owner) if (p.remote and p.owner) else None
-    p.icon_symbol = by_owner.get(short, symbols.get("default", "folder.fill"))
-    desired = f"{p.icon_symbol}|{idx}"
-    has_icon = (d / ("Icon\r")).exists()
-    if p.has_git:
-        ensure_git_ignores_icon(d)
-    if icon_state.get(p.name) == desired and has_icon:
-        return  # schon gesetzt
-    p.icon_changed = True
-    if not apply:
-        return
-    r, g, b = ICON_RGB[idx]
-    rc, _ = run(["swift", str(SWIFT_ICON), str(d), p.icon_symbol, str(r), str(g), str(b)],
-                timeout=60)
-    if rc == 0:
-        icon_state[p.name] = desired
-        # gezielter Finder-Refresh, sonst zeigt Finder gecachtes Default-Icon
-        run(["osascript", "-e",
-             f'tell application "Finder" to update (POSIX file "{d}" as alias)'])
-    else:
-        p.note = (p.note + " | " if p.note else "") + f"Icon '{p.icon_symbol}' nicht gesetzt"
-        p.icon_changed = False
+        return {"owner_aliases": {}}
 
 
 def reconcile_tag(p: Project, d: Path, apply: bool) -> None:
@@ -429,16 +373,6 @@ def build_report(projects: list[Project], applied: bool) -> str:
                        f"→ `git -C {p.name} branch -d {p.branches_prunable[0]}`")
         out.append("")
 
-    # Icon-Änderungen
-    icon_changed = [p for p in projects if p.icon_changed]
-    if icon_changed:
-        iverb = "gesetzt" if applied else "WÜRDE setzen (dry-run)"
-        out.append(f"## 🎨 Ordner-Icons {iverb}  ({len(icon_changed)})")
-        out.append("")
-        for p in icon_changed:
-            out.append(f"- **{p.name}**: `{p.icon_symbol}`")
-        out.append("")
-
     # Ruhe-Liste
     active = sorted(
         [p for p in projects if p.category in ("synced-active", "local-active")],
@@ -453,22 +387,19 @@ def build_report(projects: list[Project], applied: bool) -> str:
 
 def summary_counts(projects: list[Project]) -> dict[str, int]:
     c = {"remote-gone": 0, "synced-stale": 0, "dirty": 0, "no-remote": 0,
-         "local-stale": 0, "tags": 0, "icons": 0}
+         "local-stale": 0, "tags": 0}
     for p in projects:
         if p.category in c:
             c[p.category] += 1
         if p.tag_changed:
             c["tags"] += 1
-        if p.icon_changed:
-            c["icons"] += 1
     return c
 
 
 def notify(counts: dict[str, int]) -> None:
     gone = f"🔴{counts['remote-gone']} remote-weg · " if counts['remote-gone'] else ""
-    icons = f" · 🎨{counts['icons']} Icons" if counts['icons'] else ""
     msg = (f"{gone}🟢{counts['synced-stale']} löschbar · 🟡{counts['dirty']} dirty · "
-           f"🔵{counts['local-stale']} alt-lokal · 🏷️{counts['tags']} Tags{icons}")
+           f"🔵{counts['local-stale']} alt-lokal · 🏷️{counts['tags']} Tags")
     script = (f'display notification "{msg}" with title "🧹 Workbench Janitor" '
               f'subtitle "Report aktualisiert"')
     run(["osascript", "-e", script])
@@ -479,7 +410,6 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="Tags nicht schreiben, nur zeigen was passieren würde")
     ap.add_argument("--no-notify", action="store_true", help="keine macOS-Notification")
-    ap.add_argument("--no-icons", action="store_true", help="Ordner-Icons nicht setzen")
     args = ap.parse_args()
     apply = not args.dry_run
 
@@ -494,10 +424,6 @@ def main() -> int:
 
     symbols = load_symbols()
     OWNER_ALIASES.update(symbols.get("owner_aliases", {}))
-    try:
-        icon_state = json.loads(ICON_STATE.read_text(encoding="utf-8"))
-    except Exception:
-        icon_state = {}
 
     projects: list[Project] = []
     for d in dirs:
@@ -507,13 +433,7 @@ def main() -> int:
         classify(p)
         derive_expected_tag(p)
         reconcile_tag(p, d, apply)
-        if not args.no_icons:
-            reconcile_icon(p, d, symbols, icon_state, apply)
         projects.append(p)
-
-    if apply and not args.no_icons:
-        ICON_STATE.write_text(json.dumps(icon_state, ensure_ascii=False, indent=2),
-                              encoding="utf-8")
 
     REPORTS.mkdir(parents=True, exist_ok=True)
     report = build_report(projects, applied=apply)
