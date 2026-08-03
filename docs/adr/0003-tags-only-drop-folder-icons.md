@@ -4,7 +4,10 @@ Date: 2026-07-29
 
 ## Status
 
-Accepted. Supersedes the icon part of [ADR 0002](0002-public-release-and-branch-cleanup.md).
+Accepted. Supersedes the folder-icon decision in
+[ADR 0001](0001-architektur-und-sinks.md) ("Folder icons = ownership, colour = status").
+[ADR 0002](0002-public-release-and-branch-cleanup.md) is untouched — it only listed
+`.icon_state.json` among the git-ignored files, which is now moot.
 
 ## Context
 

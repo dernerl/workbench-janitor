@@ -4,7 +4,16 @@ Date: 2026-06-25
 
 ## Status
 
-Accepted
+Accepted, but two of the decisions below have since been replaced:
+
+- "Folder icons = ownership, colour = status" is superseded by
+  [ADR 0003](0003-tags-only-drop-folder-icons.md) — the Finder tag is now the only visual
+  signal; no custom icons are written.
+- "Scheduling stays in an already-authorised session" is superseded by
+  [ADR 0004](0004-swiftbar-menubar-surface.md) — SwiftBar's refresh timer is the scheduler.
+
+The rest (recommend-only, deterministic Python core, local auth-free sinks, tags via xattr)
+still stands.
 
 ## Context
 

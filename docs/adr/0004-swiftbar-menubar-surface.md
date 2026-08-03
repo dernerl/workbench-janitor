@@ -11,12 +11,13 @@ The Decision section below already reflects that revision.
 
 ## Context
 
-Two problems compounded: (1) nothing ran the janitor regularly — the `launchd` job from
-ADR 0001 was abandoned because background agents get no TCC prompt and are silently denied
-access to `~/Desktop` (see `tasks/todo.md`), so `/loop /janitor` was the fallback, which
-only runs while a Claude session keeps it alive; (2) even when it did run, seeing the result
-meant opening `reports/latest.md` by hand — no ambient signal that something needs a
-decision.
+Two problems compounded. (1) Nothing ran the janitor regularly. ADR 0001 had already ruled
+out `launchd` as the primary path — a background agent gets no TCC prompt and is silently
+denied access to `~/Desktop`, so it fails without an error worth reading — and fell back to
+"run it from a session that is already authorised". That fallback only runs while such a
+session happens to be alive, which in practice meant the janitor ran when someone remembered
+to start it. (2) Even when it did run, seeing the result meant opening `reports/latest.md` by
+hand — no ambient signal that something needs a decision.
 
 Two ways to get a persistent, glanceable surface were considered:
 
