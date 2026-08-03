@@ -71,12 +71,37 @@ python3 janitor.py --no-notify
 
 `owner_aliases` maps GitHub owners to short names (substring match) used in the Finder tag.
 
-### Scheduling
+### Scheduling & menu bar (recommended): SwiftBar
+
+Every run writes a `state.json` next to `janitor.py` — that file is this tool's contract to
+the outside world. The menu bar layer that reads it lives in a **separate** repo,
+[dernerl/swiftbar-plugins](https://github.com/dernerl/swiftbar-plugins), so this tool stays
+usable on its own:
+
+```bash
+brew install --cask swiftbar
+git clone https://github.com/dernerl/swiftbar-plugins.git
+cd swiftbar-plugins && ./install.sh   # first launch may ask for Desktop access — allow it
+```
+
+`install.sh` links the chosen plugin into `~/.swiftbar-plugins/` and points SwiftBar there
+(never into a repo — SwiftBar executes *every* executable file in its plugin folder). The
+plugin re-runs `janitor.py --no-notify` on its refresh interval and renders `state.json` as a
+dropdown: one section per category, each folder a clickable link that opens it in Finder,
+plus a link to `reports/latest.md` and a manual refresh item. The badge count and colour tell
+you at a glance whether anything needs attention — no more opening the report by hand. Add
+SwiftBar as a login item so it survives reboots.
+
+If this folder is not at `~/projects/workbench-janitor`, point the plugin at it with
+`JANITOR_DIR` or the plugin repo's `config.sh`.
+
+### Alternative: run it yourself
 
 Run it on an interval from any session that already has access to your projects folder
 (e.g. a shell loop, or your editor/agent). For an unattended `launchd` job see
 `launchd.plist.template` — note that protected folders (`~/Desktop`, `~/Documents`,
-`~/Downloads`) require **Full Disk Access** for background agents.
+`~/Downloads`) require **Full Disk Access** for background agents, which is why SwiftBar
+(a normal foreground app) is the easier path.
 
 See `docs/adr/` for the design decisions.
 
