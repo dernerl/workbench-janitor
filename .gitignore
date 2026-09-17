@@ -2,6 +2,8 @@
 reports/
 state.json
 .icon_state.json
+descriptions.json
+.dashboard.pid
 
 # user-spezifische Config (Vorlage: symbols.example.json)
 symbols.json

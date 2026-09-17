@@ -24,6 +24,7 @@ from pathlib import Path
 WORKBENCH = Path(os.environ.get("JANITOR_WORKBENCH", Path(__file__).resolve().parent.parent))
 STALE_DAYS = int(os.environ.get("JANITOR_STALE_DAYS", "30"))        # gesichert+ruhig → löschbar
 LOCAL_STALE_DAYS = int(os.environ.get("JANITOR_LOCAL_STALE_DAYS", "30"))  # nur-lokal+ruhig → fragen
+MAX_NEW_DESCRIPTIONS = int(os.environ.get("JANITOR_MAX_NEW_DESCRIPTIONS", "5"))
 SELF_DIR = Path(__file__).resolve().parent
 REPORTS = SELF_DIR / "reports"
 
@@ -410,6 +411,8 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="Tags nicht schreiben, nur zeigen was passieren würde")
     ap.add_argument("--no-notify", action="store_true", help="keine macOS-Notification")
+    ap.add_argument("--skip-descriptions", action="store_true",
+                    help="keine Ordner-Beschreibungen generieren (siehe descriptions.py)")
     args = ap.parse_args()
     apply = not args.dry_run
 
@@ -434,6 +437,10 @@ def main() -> int:
         derive_expected_tag(p)
         reconcile_tag(p, d, apply)
         projects.append(p)
+
+    if not args.skip_descriptions:
+        import descriptions
+        descriptions.update_descriptions(dirs, budget=MAX_NEW_DESCRIPTIONS)
 
     REPORTS.mkdir(parents=True, exist_ok=True)
     report = build_report(projects, applied=apply)

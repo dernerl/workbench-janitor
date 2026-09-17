@@ -38,10 +38,49 @@ visibility at once. Your manual tags are left untouched.
 Output: `reports/latest.md`, `state.json` (machine-readable), and a macOS notification with
 the headline counts.
 
+## Folder descriptions (optional)
+
+Each folder can also get a cached, one-sentence description of what it's actually *for* —
+generated from its README/manifest/last commit, not from Git metadata. This is a fully
+optional, isolated add-on (see `docs/adr/0005-optional-llm-folder-descriptions.md`): the tool
+works exactly the same without it.
+
+- **Backend:** Apple Intelligence (native `FoundationModels`, via `tools/describe_apple.swift`)
+  by default — free, on-device, no extra download. Falls back to `pi -p` against an Azure
+  Foundry `o4-mini` deployment only if Apple Intelligence isn't available on the machine.
+  `claude -p` is deliberately not used here — this tool runs unattended, and an automated
+  Claude Code call in that loop would spend usage quota without you asking for it each time.
+- **Cached, not recomputed every run:** stored in `descriptions.json` (gitignored, alongside
+  `state.json` — separate file, so `state.json`'s schema stays untouched). A folder's
+  description is only regenerated when its signal content (README, manifest, last commit)
+  actually changes.
+- **Budgeted:** at most `JANITOR_MAX_NEW_DESCRIPTIONS` (default `5`) new/changed descriptions
+  per run, so importing many folders at once doesn't stall a SwiftBar refresh — the rest catch
+  up over the following runs.
+- **Disable it:** `python3 janitor.py --skip-descriptions`, or simply don't have `swift`
+  (with Apple Intelligence enabled) or `pi` on `PATH` — the step is skipped silently either way.
+
+## Dashboard (optional)
+
+A static localhost page (`dashboard/index.html`) renders `state.json` + `descriptions.json` as
+project cards — status, age, and description — instead of reading the Markdown report:
+
+```bash
+./dashboard.sh open    # starts a local server if needed, opens the dashboard in your browser
+./dashboard.sh status
+./dashboard.sh stop
+```
+
+Served via `python3 -m http.server` on `JANITOR_DASHBOARD_PORT` (default `8934`), bound to
+`127.0.0.1`. No framework, no build step. Also reachable from the SwiftBar dropdown (see
+below) via a "🖥️ Dashboard öffnen" entry.
+
 ## Setup
 
 Requirements: macOS, `python3`, `git`, [`gh`](https://cli.github.com/) (logged in, for repo
-visibility).
+visibility). Optional, for folder descriptions: Xcode CLT (`swift`) with Apple Intelligence
+enabled, and/or [`pi`](https://github.com/earendil-works/pi) configured against an Azure
+Foundry deployment as fallback.
 
 ```bash
 git clone <this repo>
@@ -88,9 +127,10 @@ cd swiftbar-plugins && ./install.sh   # first launch may ask for Desktop access 
 (never into a repo — SwiftBar executes *every* executable file in its plugin folder). The
 plugin re-runs `janitor.py --no-notify` on its refresh interval and renders `state.json` as a
 dropdown: one section per category, each folder a clickable link that opens it in Finder,
-plus a link to `reports/latest.md` and a manual refresh item. The badge count and colour tell
-you at a glance whether anything needs attention — no more opening the report by hand. Add
-SwiftBar as a login item so it survives reboots.
+plus a link to `reports/latest.md`, a "🖥️ Dashboard öffnen" entry (starts/opens the localhost
+dashboard above), and a manual refresh item. The badge count and colour tell you at a glance
+whether anything needs attention — no more opening the report by hand. Add SwiftBar as a login
+item so it survives reboots.
 
 If this folder is not at `~/projects/workbench-janitor`, point the plugin at it with
 `JANITOR_DIR` or the plugin repo's `config.sh`.
