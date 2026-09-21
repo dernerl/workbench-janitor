@@ -21,7 +21,10 @@ from datetime import datetime
 from pathlib import Path
 
 # ── Config (per ENV überschreibbar) ────────────────────────────────────────────
-WORKBENCH = Path(os.environ.get("JANITOR_WORKBENCH", Path(__file__).resolve().parent.parent))
+# Mehrere Wurzeln: JANITOR_WORKBENCHES (":"-getrennt). Alt: JANITOR_WORKBENCH (eine Wurzel).
+_DEFAULT_ROOTS = [Path(__file__).resolve().parent.parent, Path.home() / "Desktop" / "YOLO-WORKBENCH"]
+_env_roots = os.environ.get("JANITOR_WORKBENCHES") or os.environ.get("JANITOR_WORKBENCH")
+WORKBENCHES = [Path(r).expanduser() for r in _env_roots.split(":") if r] if _env_roots else _DEFAULT_ROOTS
 STALE_DAYS = int(os.environ.get("JANITOR_STALE_DAYS", "30"))        # gesichert+ruhig → löschbar
 LOCAL_STALE_DAYS = int(os.environ.get("JANITOR_LOCAL_STALE_DAYS", "30"))  # nur-lokal+ruhig → fragen
 MAX_NEW_DESCRIPTIONS = int(os.environ.get("JANITOR_MAX_NEW_DESCRIPTIONS", "5"))
@@ -29,7 +32,7 @@ SELF_DIR = Path(__file__).resolve().parent
 REPORTS = SELF_DIR / "reports"
 
 # Ordner die nie betrachtet werden (der Janitor selbst, Claude-State, versteckte)
-EXCLUDE = {SELF_DIR.name, ".claude", ".git"}
+EXCLUDE = {SELF_DIR.name, ".claude", ".git", "__pycache__"}
 # Beim Ermitteln des "newest file" übersprungen (kein echter Arbeitsfortschritt)
 SKIP_WALK = {".git", "node_modules", ".venv", "venv", ".build", "DerivedData",
              ".next", "dist", "build", "__pycache__", ".mypy_cache"}
@@ -71,6 +74,7 @@ def owner_short(owner: str) -> str:
 @dataclass
 class Project:
     name: str
+    root: str = ""                       # Wurzelverzeichnis (Workbench), in dem der Ordner liegt
     has_git: bool = False
     remote: str | None = None
     host: str | None = None
@@ -168,7 +172,7 @@ def write_tags_raw(d: Path, entries: list[str]) -> None:
 
 # ── Kern ───────────────────────────────────────────────────────────────────--
 def collect(d: Path) -> Project:
-    p = Project(name=d.name)
+    p = Project(name=d.name, root=str(d.parent))
     p.age_days = newest_age_days(d)
     p.current_tags = read_tags(d)
 
@@ -326,10 +330,15 @@ GROUPS = [
 ]
 
 
+def label(p: Project) -> str:
+    """Name mit Wurzel-Kürzel (`YOLO-WORKBENCH/foo`), damit Report-Zeilen eindeutig bleiben."""
+    return f"{Path(p.root).name}/{p.name}"
+
+
 def build_report(projects: list[Project], applied: bool) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     out = [f"# 🧹 Workbench Janitor — {now}", "",
-           f"Workbench: `{WORKBENCH}` · {len(projects)} Ordner · "
+           f"Workbenches: {', '.join(f'`{w}`' for w in WORKBENCHES)} · {len(projects)} Ordner · "
            f"Schwellen: gesichert>{STALE_DAYS}d, lokal>{LOCAL_STALE_DAYS}d", ""]
 
     by_cat: dict[str, list[Project]] = {}
@@ -343,7 +352,7 @@ def build_report(projects: list[Project], applied: bool) -> str:
         out.append(f"## {title}  ({len(items)})")
         out.append("")
         for p in items:
-            out.append(f"- **{p.name}** — {p.recommendation}")
+            out.append(f"- **{label(p)}** — {p.recommendation}")
             if p.note:
                 out.append(f"  - ⚠️ {p.note}")
         out.append("")
@@ -356,7 +365,7 @@ def build_report(projects: list[Project], applied: bool) -> str:
     if changed:
         for p in changed:
             now_tags = ", ".join(t for t in p.current_tags if t.startswith(TAG_PREFIX)) or "—"
-            out.append(f"- **{p.name}**: `{now_tags}` → `{p.expected_tag}`")
+            out.append(f"- **{label(p)}**: `{now_tags}` → `{p.expected_tag}`")
     else:
         out.append("- alle Tags stimmen ✓")
     out.append("")
@@ -370,8 +379,8 @@ def build_report(projects: list[Project], applied: bool) -> str:
                    f"{len(with_branches)} Repos)")
         out.append("")
         for p in with_branches:
-            out.append(f"- **{p.name}**: `{'`, `'.join(p.branches_prunable)}`  "
-                       f"→ `git -C {p.name} branch -d {p.branches_prunable[0]}`")
+            out.append(f"- **{label(p)}**: `{'`, `'.join(p.branches_prunable)}`  "
+                       f"→ `git -C {p.root}/{p.name} branch -d {p.branches_prunable[0]}`")
         out.append("")
 
     # Ruhe-Liste
@@ -381,7 +390,7 @@ def build_report(projects: list[Project], applied: bool) -> str:
     out.append(f"## ✅ Aktiv / in Ruhe lassen  ({len(active)})")
     out.append("")
     for p in active:
-        out.append(f"- {p.name} (vor {p.age_days}d angefasst)")
+        out.append(f"- {label(p)} (vor {p.age_days}d angefasst)")
     out.append("")
     return "\n".join(out)
 
@@ -416,14 +425,17 @@ def main() -> int:
     args = ap.parse_args()
     apply = not args.dry_run
 
-    if not WORKBENCH.is_dir():
-        print(f"Workbench nicht gefunden: {WORKBENCH}", file=sys.stderr)
+    roots = [w for w in WORKBENCHES if w.is_dir()]
+    for w in WORKBENCHES:
+        if w not in roots:
+            print(f"Workbench nicht gefunden (übersprungen): {w}", file=sys.stderr)
+    if not roots:
         return 1
 
-    dirs = sorted(
-        d for d in WORKBENCH.iterdir()
+    dirs = [
+        d for w in roots for d in sorted(w.iterdir())
         if d.is_dir() and not d.name.startswith(".") and d.name not in EXCLUDE
-    )
+    ]
 
     symbols = load_symbols()
     OWNER_ALIASES.update(symbols.get("owner_aliases", {}))
@@ -450,7 +462,7 @@ def main() -> int:
 
     state = {
         "generated": datetime.now().isoformat(timespec="seconds"),
-        "workbench": str(WORKBENCH),
+        "workbenches": [str(w) for w in roots],
         "applied": apply,
         "summary": summary_counts(projects),
         "projects": [asdict(p) for p in projects],

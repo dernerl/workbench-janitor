@@ -158,7 +158,7 @@ def update_descriptions(dirs: list[Path], budget: int) -> dict:
             break
         context = gather_context(d)
         h = signal_hash(context)
-        entry = cache.get(d.name)
+        entry = cache.get(str(d))
         if entry and entry.get("signal_hash") == h:
             continue  # Cache-Hit, kein Aufruf nötig
 
@@ -166,7 +166,7 @@ def update_descriptions(dirs: list[Path], budget: int) -> dict:
         spent += 1
         if desc is None:
             continue  # kein Backend verfügbar/erfolgreich — alten Eintrag (falls vorhanden) behalten
-        cache[d.name] = {
+        cache[str(d)] = {
             "description": desc,
             "backend": backend,
             "signal_hash": h,

@@ -3,73 +3,97 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🧹 Workbench Janitor</title>
+<title>Workbench Janitor</title>
 <style>
   :root {
-    --bg: #f5f5f7; --card: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
-    --border: #e5e5ea;
-    --green: #34c759; --red: #ff3b30; --yellow: #ffcc00; --orange: #ff9500; --blue: #007aff;
+    --bg: #f5f5f7; --card: #ffffff; --text: #1d1d1f; --muted: #86868b; --faint: #c7c7cc;
+    --border: #e8e8ed; --hover-shadow: 0 8px 24px rgba(0,0,0,.06);
+    --green: #34c759; --red: #ff453a; --yellow: #ffcc00; --orange: #ff9f0a; --blue: #0a84ff;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1c1c1e; --card: #2c2c2e; --text: #f5f5f7; --muted: #98989d; --border: #3a3a3c; }
+    :root {
+      --bg: #000000; --card: #1c1c1e; --text: #f5f5f7; --muted: #8e8e93; --faint: #48484a;
+      --border: #2c2c2e; --hover-shadow: 0 8px 28px rgba(0,0,0,.5);
+    }
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--text);
-    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    margin: 0; padding: 48px 24px 64px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  header { max-width: 1100px; margin: 0 auto 20px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
+  header { max-width: 1040px; margin: 0 auto 28px; }
+  h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 6px; }
   .meta { color: var(--muted); font-size: 13px; }
-  .filters { max-width: 1100px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .filters { max-width: 1040px; margin: 0 auto 28px; display: flex; flex-wrap: wrap; gap: 6px; }
   .filters button {
-    border: 1px solid var(--border); background: var(--card); color: var(--text);
-    border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+    border: none; background: transparent; color: var(--muted);
+    border-radius: 8px; padding: 5px 10px; font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: background .15s, color .15s;
   }
-  .filters button.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .filters button:hover { background: var(--card); color: var(--text); }
+  .filters button.active { background: var(--text); color: var(--bg); }
+
   .grid {
-    max-width: 1100px; margin: 0 auto; display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
+    max-width: 1040px; margin: 0 auto; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 14px;
   }
   .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+    background: var(--card); border-radius: 14px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: box-shadow .15s, transform .15s;
   }
+  .card:hover { box-shadow: var(--hover-shadow); transform: translateY(-1px); }
+
   .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .name { font-weight: 600; font-size: 15px; word-break: break-word; }
-  .age { color: var(--muted); font-size: 12px; white-space: nowrap; }
-  .badge {
-    display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
-    border-radius: 999px; color: #fff; width: fit-content;
-  }
-  .desc { font-size: 13px; color: var(--text); }
-  .desc.empty { color: var(--muted); font-style: italic; }
+  .name { font-weight: 600; font-size: 14.5px; word-break: break-word; letter-spacing: -0.005em; }
+  .age { color: var(--faint); font-size: 12px; white-space: nowrap; }
+
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  .desc { font-size: 13.5px; color: var(--text); opacity: .85; }
+  .desc.empty { color: var(--faint); font-style: italic; opacity: 1; }
+
   .rec { font-size: 12px; color: var(--muted); }
-  .links { display: flex; gap: 10px; margin-top: 4px; }
+
+  .card-footer {
+    margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .links { display: flex; gap: 12px; }
   .links a { font-size: 12px; color: var(--blue); text-decoration: none; }
   .links a:hover { text-decoration: underline; }
-  .backend-tag { font-size: 10px; color: var(--muted); }
-  .empty-state { max-width: 1100px; margin: 40px auto; text-align: center; color: var(--muted); }
+  .backend-tag { font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+  .group { max-width: 1040px; margin: 0 auto 32px; }
+  .group-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
+  .group-head h2 { font-size: 15px; font-weight: 650; margin: 0; }
+  .group-head span { color: var(--muted); font-size: 12.5px; }
+  .group .grid { max-width: none; }
+
+  .empty-state { max-width: 1040px; margin: 64px auto; text-align: center; color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🧹 Workbench Janitor</h1>
+  <h1>Workbench Janitor</h1>
   <div class="meta" id="meta">lädt …</div>
 </header>
 <div class="filters" id="filters"></div>
-<div class="grid" id="grid"></div>
+<div id="groups"></div>
 <div class="empty-state" id="empty" style="display:none">Keine Ordner in dieser Kategorie.</div>
 
 <script>
 const CATS = {
-  "remote-gone":   { label: "🔴 Remote fehlt",        color: "var(--red)" },
-  "synced-stale":  { label: "🟢 Löschbar",             color: "var(--green)" },
-  "dirty":         { label: "🟡 Ungesichert",          color: "var(--yellow)" },
-  "no-remote":     { label: "🟠 Ohne Remote",          color: "var(--orange)" },
-  "local-stale":   { label: "🔵 Nur lokal & alt",      color: "var(--blue)" },
-  "synced-active": { label: "✅ Aktiv (gesichert)",    color: "var(--muted)" },
-  "local-active":  { label: "✅ Aktiv (lokal)",        color: "var(--muted)" },
+  "remote-gone":   { label: "Remote fehlt",        color: "var(--red)" },
+  "synced-stale":  { label: "Löschbar",            color: "var(--green)" },
+  "dirty":         { label: "Ungesichert",         color: "var(--yellow)" },
+  "no-remote":     { label: "Ohne Remote",         color: "var(--orange)" },
+  "local-stale":   { label: "Nur lokal & alt",     color: "var(--blue)" },
+  "synced-active": { label: "Aktiv (gesichert)",   color: "var(--faint)" },
+  "local-active":  { label: "Aktiv (lokal)",       color: "var(--faint)" },
 };
 
 let state = null, descriptions = {}, activeFilter = null;
@@ -78,39 +102,52 @@ function fileUrl(path) {
   return "file://" + path.split("/").map(encodeURIComponent).join("/");
 }
 
-function render() {
-  const grid = document.getElementById("grid");
-  const empty = document.getElementById("empty");
-  grid.innerHTML = "";
-  const workbench = state.workbench;
-  const projects = (state.projects || [])
-    .filter(p => !activeFilter || p.category === activeFilter)
-    .sort((a, b) => b.age_days - a.age_days);
+function homeShort(path) {
+  return path.replace(/^\/Users\/[^/]+/, "~");
+}
 
-  empty.style.display = projects.length ? "none" : "block";
-
-  for (const p of projects) {
-    const cat = CATS[p.category] || { label: p.category, color: "var(--muted)" };
-    const d = descriptions[p.name];
-    const card = document.createElement("div");
-    card.className = "card";
-    const descHtml = d
-      ? `<div class="desc">${escapeHtml(d.description)}</div><div class="backend-tag">${d.backend === "apple" ? "🍎 on-device" : "☁️ " + d.backend}</div>`
-      : `<div class="desc empty">keine Beschreibung</div>`;
-    card.innerHTML = `
+function cardHtml(p) {
+  const cat = CATS[p.category] || { label: p.category, color: "var(--faint)" };
+  const d = descriptions[p.root + "/" + p.name];
+  const descHtml = d
+    ? `<div class="desc">${escapeHtml(d.description)}</div>`
+    : `<div class="desc empty">keine Beschreibung</div>`;
+  const backendTag = d ? (d.backend === "apple" ? "On-Device" : "Cloud · " + escapeHtml(d.backend)) : "";
+  return `
+    <div class="card">
       <div class="card-top">
         <span class="name">${escapeHtml(p.name)}</span>
         <span class="age">${p.age_days}d</span>
       </div>
-      <span class="badge" style="background:${cat.color}">${cat.label}</span>
+      <div class="status"><span class="dot" style="background:${cat.color}"></span>${cat.label}</div>
       ${descHtml}
-      <div class="rec">${escapeHtml(p.recommendation || "")}</div>
-      <div class="links">
-        <a href="${fileUrl(workbench + "/" + p.name)}">Ordner öffnen</a>
-        <a href="reports/latest.md">Report</a>
+      ${p.recommendation ? `<div class="rec">${escapeHtml(p.recommendation)}</div>` : ""}
+      <div class="card-footer">
+        <div class="links">
+          <a href="${fileUrl(p.root + "/" + p.name)}">Ordner</a>
+          <a href="../reports/latest.md">Report</a>
+        </div>
+        <span class="backend-tag">${backendTag}</span>
       </div>
-    `;
-    grid.appendChild(card);
+    </div>`;
+}
+
+function render() {
+  const container = document.getElementById("groups");
+  const empty = document.getElementById("empty");
+  container.innerHTML = "";
+  const all = (state.projects || []).filter(p => !activeFilter || p.category === activeFilter);
+  empty.style.display = all.length ? "none" : "block";
+
+  for (const root of state.workbenches || []) {
+    const items = all.filter(p => p.root === root).sort((a, b) => b.age_days - a.age_days);
+    if (!items.length) continue;
+    const group = document.createElement("section");
+    group.className = "group";
+    group.innerHTML = `
+      <div class="group-head"><h2>${escapeHtml(homeShort(root))}</h2><span>${items.length} Ordner</span></div>
+      <div class="grid">${items.map(cardHtml).join("")}</div>`;
+    container.appendChild(group);
   }
 }
 
@@ -122,6 +159,7 @@ function escapeHtml(s) {
 
 function renderFilters() {
   const bar = document.getElementById("filters");
+  bar.innerHTML = "";
   const counts = {};
   for (const p of state.projects || []) counts[p.category] = (counts[p.category] || 0) + 1;
 
@@ -146,11 +184,11 @@ async function load() {
     fetch("../state.json").catch(() => null),
     fetch("../descriptions.json").catch(() => null),
   ]);
-  state = stateRes && stateRes.ok ? await stateRes.json() : { projects: [], workbench: "" };
+  state = stateRes && stateRes.ok ? await stateRes.json() : { projects: [], workbenches: [] };
   descriptions = descRes && descRes.ok ? await descRes.json() : {};
 
   document.getElementById("meta").textContent =
-    `Workbench: ${state.workbench || "?"} · Stand ${(state.generated || "?").slice(0, 16).replace("T", " ")} · ${(state.projects || []).length} Ordner`;
+    `${(state.workbenches || []).map(homeShort).join(" + ") || "?"} · Stand ${(state.generated || "?").slice(0, 16).replace("T", " ")} · ${(state.projects || []).length} Ordner`;
 
   document.getElementById("filters").innerHTML = "";
   renderFilters();

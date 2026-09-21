@@ -86,11 +86,12 @@ Foundry deployment as fallback.
 git clone <this repo>
 cd workbench-janitor
 cp symbols.example.json symbols.json    # set your owner→short-name mapping
-JANITOR_WORKBENCH=/path/to/your/projects python3 janitor.py
+JANITOR_WORKBENCHES=/path/to/projects:/path/to/other python3 janitor.py
 ```
 
-By default the workbench is the **parent** of this folder, so dropping `workbench-janitor`
-into your projects directory just works.
+`JANITOR_WORKBENCHES` takes one or more root directories separated by `:` (the old
+single-root `JANITOR_WORKBENCH` still works). Without it, the scan covers the **parent** of this
+folder plus `~/Desktop/YOLO-WORKBENCH` (skipped if missing). The dashboard groups cards per root.
 
 ### Options
 
